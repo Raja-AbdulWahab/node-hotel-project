@@ -49,10 +49,30 @@ const express = require('express')
 const app = express()
 const db = require('./db') //when this line executes it will perform the action defined inside db file.
 require('dotenv').config();
+const passport = require('./Auth')
 
 const bodyParser = require('body-parser')//npm i body-parser
 app.use(bodyParser.json());// it will convert json data to object and stores in req.body.
 const PORT = process.env.PORT || 3000;
+
+
+//Logging
+//Middleware Function
+const logRequest = (req, res, next) =>{
+    //Here we are checking that at which time request made to which URL.
+    console.log(`[${new Date().toLocaleString()}] Request Made to: ${req.originalUrl}`);
+    next(); //next is a callback that signals to express that current midleware func has completed its processing now move on to the nxt phase.
+}
+
+//Generally we perform logging on every end point so for this we use.
+app.use(logRequest) //we use this when we want to do logging on hitting every url. for specific url like person we will not use this.
+//for specific we will use like app.get('/', logRequest, (req, res))
+
+
+app.use(passport.initialize());
+//Authentication to use local strategy
+const localAuthMiddleware = passport.authenticate('local', {session: false});
+
 
 app.get('/', (req, res) => {
     res.send("Welcome to our Hotel")
@@ -60,12 +80,12 @@ app.get('/', (req, res) => {
 
 //import the router file for person
 const personRoutes = require('./routes/personRoutes')
-const menuRoutes = require('./routes/menuRoutes')
+const menuRoutes = require('./routes/menuRoutes');
+const Person = require('./model/Person');
 
 //Use the routers
 app.use('/person', personRoutes)
 app.use('/menuitem', menuRoutes)
-
 // app.post('/data', (req,res) =>{
 //     res.send('data is saved')
 // })

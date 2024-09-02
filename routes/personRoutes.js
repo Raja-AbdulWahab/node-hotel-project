@@ -1,10 +1,11 @@
 const express = require('express')
 const router = express.Router()
 const Person = require('./../model/Person')
+const { jwtAuthMiddleware, generateToken } = require('./../jwt')
 
 //Performing crud for Person Schema
 //POST route to add a person
-router.post('/', async (req, res) => {
+router.post('/signup', async (req, res) => {
     try {
         const data = req.body; //request body contains person data coming from front-end.
 
@@ -14,7 +15,14 @@ router.post('/', async (req, res) => {
         //save newPerson to the database
         const response = await newPerson.save()
         console.log("data saved")
-        res.status(200).json(response)
+        const payload = {
+            id: response.id,
+            username: response.username
+        }
+        const token = generateToken(payload)
+        console.log('Token is: ', token)
+
+        res.status(200).json({ response: response, token: token })
     }
     catch (err) {
         console.log(err);
@@ -23,7 +31,49 @@ router.post('/', async (req, res) => {
     }
 })
 
-router.get('/', async (req, res) => {
+//Login Route
+router.post('/login', async (req, res) => {
+    try {
+        //Extract username and password from request body
+        const { username, password } = req.body;
+
+        //Find the user by username
+        const user = await Person.findOne({ username: username })
+
+        //If user does not exist or password does not match return error
+        if (!user || !(await user.comparePassword(password))) {
+            return res.status(401).json({ err: 'Invalid username and password' })
+        }
+
+        //generate token 
+        const payload = {
+            id: user.id,
+            username: user.username
+        }
+        const token = generateToken(payload)
+        //return token as response
+        res.json({ token })
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ err: 'Internal server Error' })
+    }
+})
+
+router.get('/profile', jwtAuthMiddleware, async (req, res) => {
+    try {
+        const {userData} = req.user; //extract payload from req.user
+        console.log('user data: ', userData)
+
+        const userId = userData.id
+        const user = await Person.findById(userId)
+        res.status(200).json({ user })
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ err: 'Internal server Error' })
+    }
+})
+
+router.get('/', jwtAuthMiddleware, async (req, res) => {
     try {
         const data = await Person.find()
         console.log("data saved")
@@ -63,7 +113,7 @@ router.patch('/:pid', async (req, res) => {
             runValidators: true // run Mongoose validation
         })
 
-        if(!response){
+        if (!response) {
             return res.status(404).json({ error: 'Invalid Id Type' })
         }
 

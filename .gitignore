@@ -1,4 +1,3 @@
-gitignore
 #Git will ignore node_modules directory. basically all data in this file will be ignored by git.
 node_modules/
 #ignore dotenv filel
